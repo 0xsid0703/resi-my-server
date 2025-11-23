@@ -9,7 +9,13 @@ export async function GET(
   
   if (pathSegments.length === 0) {
     // If no path, redirect to zillow.com root
-    return NextResponse.redirect('https://www.zillow.com/', 308);
+    return NextResponse.redirect('https://www.zillow.com/', {
+      status: 301,
+      headers: {
+        'Location': 'https://www.zillow.com/',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    });
   }
   
   // Extract address (first segment) and ID (second segment)
@@ -26,7 +32,14 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams.toString();
   const finalUrl = searchParams ? `${zillowUrl}?${searchParams}` : zillowUrl;
   
-  // Perform a permanent redirect (308) as it preserves the request method
-  return NextResponse.redirect(finalUrl, 308);
+  // Use 301 (Permanent Redirect) - more widely supported by scrapers
+  // Set explicit headers to ensure scrapers follow the redirect
+  return NextResponse.redirect(finalUrl, {
+    status: 301,
+    headers: {
+      'Location': finalUrl,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  });
 }
 

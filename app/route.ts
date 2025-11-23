@@ -6,6 +6,13 @@ export async function GET(request: NextRequest) {
   const queryString = searchParams ? `?${searchParams}` : '';
   
   // Redirect root path to zillow.com with query parameters
-  return NextResponse.redirect(`https://www.zillow.com/${queryString}`, 308);
+  const redirectUrl = `https://www.zillow.com/${queryString}`;
+  return NextResponse.redirect(redirectUrl, {
+    status: 301,
+    headers: {
+      'Location': redirectUrl,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  });
 }
 
