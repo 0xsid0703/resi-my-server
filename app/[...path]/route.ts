@@ -42,37 +42,41 @@ export async function GET(
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://www.zillow.com/',
-        'Origin': 'https://www.zillow.com',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
       },
-      // Don't follow redirects - we want the actual response
       redirect: 'follow',
     });
     
-    // Get the response status and content
-    const status = response.status;
+    if (!response.ok) {
+      // If response is not ok, return error with details
+      return new NextResponse(
+        `Failed to fetch Zillow content. Status: ${response.status} ${response.statusText}\n\nTarget URL: ${finalUrl}`,
+        {
+          status: response.status,
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        }
+      );
+    }
+    
+    // Get the HTML content
     const html = await response.text();
     
-    // Return the HTML content with appropriate headers
-    // Even if status is not 200, return the content (some sites return 200 with content)
+    // Return the HTML content directly - NO REDIRECT
     return new NextResponse(html, {
-      status: status >= 200 && status < 300 ? status : 200,
+      status: 200,
       headers: {
-        'Content-Type': response.headers.get('content-type') || 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Proxy-Target': finalUrl,
       },
     });
   } catch (error) {
-    // If there's an error fetching, return an error message instead of redirecting
-    console.error('Error fetching Zillow content:', error);
+    // Return error message - NO REDIRECT
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new NextResponse(
-      `Error fetching content from Zillow: ${error instanceof Error ? error.message : 'Unknown error'}\n\nTarget URL: ${finalUrl}`,
+      `Error fetching content from Zillow: ${errorMessage}\n\nTarget URL: ${finalUrl}\n\nThis is NOT a redirect - the proxy failed.`,
       {
         status: 500,
         headers: {
