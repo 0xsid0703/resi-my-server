@@ -4,8 +4,27 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
-  // Get the path segments
+  // Get the path segments - handle both with and without trailing slash
   const pathSegments = params.path || [];
+  
+  // Log for debugging (will show in Vercel logs)
+  console.log('Route hit! Path segments:', pathSegments);
+  console.log('Full URL:', request.url);
+  
+  // TEMPORARY: Return a test response to verify route is working
+  // Remove this after confirming the route is hit
+  if (request.nextUrl.searchParams.get('test') === 'true') {
+    return new NextResponse(
+      `ROUTE IS WORKING!\n\nPath segments: ${JSON.stringify(pathSegments)}\nFull URL: ${request.url}\n\nThis confirms the route handler is executing.`,
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain',
+          'X-Route-Working': 'true',
+        },
+      }
+    );
+  }
   
   if (pathSegments.length === 0) {
     // If no path, redirect to zillow.com root
@@ -14,9 +33,15 @@ export async function GET(
   
   // Validate we have at least 2 segments
   if (pathSegments.length < 2) {
-    return new NextResponse('Invalid path format. Expected: /{address}/{id}/{zpid}/', {
-      status: 400,
-    });
+    return new NextResponse(
+      `Invalid path format. Expected: /{address}/{id}/{zpid}/\n\nReceived segments: ${JSON.stringify(pathSegments)}`,
+      {
+        status: 400,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      }
+    );
   }
   
   // Extract address (first segment) and ID (second segment)
@@ -60,18 +85,32 @@ export async function GET(
       );
     }
     
-    // Get the HTML content
-    const html = await response.text();
-    
-    // Return the HTML content directly - NO REDIRECT
-    return new NextResponse(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'X-Proxy-Target': finalUrl,
-      },
-    });
+  // Get the HTML content
+  const html = await response.text();
+  
+  // Verify we got content
+  if (!html || html.length === 0) {
+    return new NextResponse(
+      `Received empty response from Zillow\n\nTarget URL: ${finalUrl}`,
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      }
+    );
+  }
+  
+  // Return the HTML content directly - NO REDIRECT
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'X-Proxy-Target': finalUrl,
+      'X-Route-Hit': 'true', // Debug header to confirm route was hit
+    },
+  });
   } catch (error) {
     // Return error message - NO REDIRECT
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
