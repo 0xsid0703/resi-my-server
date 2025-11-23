@@ -7,17 +7,25 @@ export async function GET(
   // Get the path segments
   const pathSegments = params.path || [];
   
-  // Join the path segments with '/'
-  const path = pathSegments.join('/');
+  if (pathSegments.length === 0) {
+    // If no path, redirect to zillow.com root
+    return NextResponse.redirect('https://www.zillow.com/', 308);
+  }
+  
+  // Extract address (first segment) and zpid (last segment)
+  // Format: /{address}/{id1}/{id2}_zpid/
+  const address = pathSegments[0];
+  const lastSegment = pathSegments[pathSegments.length - 1];
+  
+  // Construct the Zillow homedetails URL
+  // Format: https://www.zillow.com/homedetails/{address}/{zpid}/
+  const zillowUrl = `https://www.zillow.com/homedetails/${address}/${lastSegment}/`;
   
   // Get query parameters if any
   const searchParams = request.nextUrl.searchParams.toString();
-  const queryString = searchParams ? `?${searchParams}` : '';
-  
-  // Construct the Zillow URL with path and query parameters
-  const zillowUrl = `https://zillow.com/${path}${queryString}`;
+  const finalUrl = searchParams ? `${zillowUrl}?${searchParams}` : zillowUrl;
   
   // Perform a permanent redirect (308) as it preserves the request method
-  return NextResponse.redirect(zillowUrl, 308);
+  return NextResponse.redirect(finalUrl, 308);
 }
 

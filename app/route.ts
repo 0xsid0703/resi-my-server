@@ -6,6 +6,6 @@ export async function GET(request: NextRequest) {
   const queryString = searchParams ? `?${searchParams}` : '';
   
   // Redirect root path to zillow.com with query parameters
-  return NextResponse.redirect(`https://zillow.com/${queryString}`, 308);
+  return NextResponse.redirect(`https://www.zillow.com/${queryString}`, 308);
 }
 
