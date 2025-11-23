@@ -9,13 +9,7 @@ export async function GET(
   
   if (pathSegments.length === 0) {
     // If no path, redirect to zillow.com root
-    return NextResponse.redirect('https://www.zillow.com/', {
-      status: 301,
-      headers: {
-        'Location': 'https://www.zillow.com/',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-    });
+    return NextResponse.redirect('https://www.zillow.com/', 301);
   }
   
   // Extract address (first segment) and ID (second segment)
@@ -32,14 +26,37 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams.toString();
   const finalUrl = searchParams ? `${zillowUrl}?${searchParams}` : zillowUrl;
   
-  // Use 301 (Permanent Redirect) - more widely supported by scrapers
-  // Set explicit headers to ensure scrapers follow the redirect
-  return NextResponse.redirect(finalUrl, {
-    status: 301,
-    headers: {
-      'Location': finalUrl,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-  });
+  try {
+    // Fetch the content from Zillow and proxy it
+    // This allows scrapers to get the actual content without following redirects
+    const response = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': request.headers.get('user-agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.zillow.com/',
+      },
+    });
+    
+    if (!response.ok) {
+      // If fetch fails, fall back to redirect
+      return NextResponse.redirect(finalUrl, 301);
+    }
+    
+    const html = await response.text();
+    
+    // Return the HTML content with appropriate headers
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  } catch (error) {
+    // If there's an error fetching, fall back to redirect
+    console.error('Error fetching Zillow content:', error);
+    return NextResponse.redirect(finalUrl, 301);
+  }
 }
 
