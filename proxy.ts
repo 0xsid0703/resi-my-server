@@ -4,12 +4,15 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const pathname = url.pathname;
 
-  // Skip root path - let it be handled by app/route.ts
+  // Handle root path - redirect to zillow.com
   if (pathname === '/') {
-    return NextResponse.next();
+    const searchParams = url.searchParams.toString();
+    const queryString = searchParams ? `?${searchParams}` : '';
+    const redirectUrl = `https://www.zillow.com/${queryString}`;
+    return NextResponse.redirect(redirectUrl, 301);
   }
 
-  // Skip static files and API routes
+  // Skip static files and API routes - let Next.js handle them
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -115,7 +118,8 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-// Match all paths except root, static files, and API routes
+// Match all paths except static files and API routes
+// Note: We handle root path in the proxy function itself
 export const config = {
   matcher: [
     /*
