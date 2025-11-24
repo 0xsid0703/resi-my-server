@@ -4,12 +4,39 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const pathname = url.pathname;
 
-  // Handle root path - redirect to zillow.com
+  // Handle root path - fetch and return zillow.com content
   if (pathname === '/') {
     const searchParams = url.searchParams.toString();
     const queryString = searchParams ? `?${searchParams}` : '';
-    const redirectUrl = `https://www.zillow.com/${queryString}`;
-    return NextResponse.redirect(redirectUrl, 301);
+    const zillowUrl = `https://www.zillow.com/${queryString}`;
+    
+    try {
+      const response = await fetch(zillowUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      });
+      
+      if (!response.ok) {
+        return new NextResponse(
+          `Failed to fetch Zillow content. Status: ${response.status}`,
+          { status: response.status }
+        );
+      }
+      
+      const html = await response.text();
+      return new NextResponse(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      });
+    } catch (error) {
+      return new NextResponse(
+        `Error fetching Zillow content: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { status: 500 }
+      );
+    }
   }
 
   // Skip static files and API routes - let Next.js handle them
@@ -27,8 +54,34 @@ export async function proxy(request: NextRequest) {
 
   // Validate we have at least 2 segments
   if (pathSegments.length < 2) {
-    // If less than 2 segments, redirect to zillow.com root
-    return NextResponse.redirect('https://www.zillow.com/', 301);
+    // If less than 2 segments, fetch and return zillow.com root
+    try {
+      const response = await fetch('https://www.zillow.com/', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      });
+      
+      if (!response.ok) {
+        return new NextResponse(
+          `Failed to fetch Zillow content. Status: ${response.status}`,
+          { status: response.status }
+        );
+      }
+      
+      const html = await response.text();
+      return new NextResponse(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      });
+    } catch (error) {
+      return new NextResponse(
+        `Error fetching Zillow content: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { status: 500 }
+      );
+    }
   }
 
   // Extract address (first segment) and ID (second segment)
@@ -43,8 +96,46 @@ export async function proxy(request: NextRequest) {
   const searchParams = url.searchParams.toString();
   const finalUrl = searchParams ? `${zillowUrl}?${searchParams}` : zillowUrl;
 
-  // Redirect to Zillow
-  return NextResponse.redirect(finalUrl, 301);
+  // Fetch and return Zillow content
+  try {
+    const response = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+
+    if (!response.ok) {
+      return new NextResponse(
+        `Failed to fetch Zillow content. Status: ${response.status} ${response.statusText}\n\nTarget URL: ${finalUrl}`,
+        {
+          status: response.status,
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        }
+      );
+    }
+
+    const html = await response.text();
+
+    // Return the HTML content directly
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    });
+  } catch (error) {
+    return new NextResponse(
+      `Error fetching content from Zillow: ${error instanceof Error ? error.message : 'Unknown error'}\n\nTarget URL: ${finalUrl}`,
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      }
+    );
+  }
 }
 
 // Match all paths except static files and API routes
